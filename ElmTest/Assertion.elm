@@ -13,6 +13,7 @@ type Assertion = AssertTrue     (() -> Bool)
                | AssertFalse    (() -> Bool)
                | AssertEqual    (() -> Bool) String String
                | AssertNotEqual (() -> Bool) String String
+               | AssertSignal   (Signal (Maybe Bool))
 
 {-| Basic function to create an Assert True assertion. Delays execution until tests are run. -}
 assertT : (() -> Bool) -> Assertion
@@ -34,3 +35,16 @@ assertionList xs ys = List.map2 assertEqual xs ys
 {-| Basic function to create an Assert Not Equals assertion. -}
 assertNotEqual : a -> a -> Assertion
 assertNotEqual a b = AssertNotEqual (\_ -> a /= b) (toString a) (toString b)
+
+{-| Basic function to create an Assert Signal assertion. -}
+assertSignal : Signal (Maybe Bool) -> Assertion
+assertSignal = AssertSignal
+
+{-| Basic function to create an Assert Signal assertion mapping signal values to bool. -}
+assertMap : (x -> Bool) -> Signal (Maybe x) -> Assertion
+assertMap c s =
+  let c' = \mx -> case mx of
+                    Just x -> Just (c x)
+                    Nothing -> Nothing
+      s' = Signal.map c' s
+  in  AssertSignal s'

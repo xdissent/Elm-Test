@@ -1,4 +1,4 @@
-module ElmTest.Runner.Element (runDisplay) where
+module ElmTest.Runner.Element (runDisplay, mapDisplay) where
 
 {-| Run a test suite and display it as an Element
 
@@ -16,7 +16,7 @@ import Text
 
 import ElmTest.Run as Run
 import ElmTest.Test exposing (..)
-import ElmTest.Runner.String as String
+import ElmTest.Runner.String as StringRunner
 
 plainText : String -> Element
 plainText s = leftAligned (Text.fromString s)
@@ -29,8 +29,9 @@ pretty (s, result) =
     in  case result of
             Run.Pass _   -> color green <| flow right [spacer w 1, plainText s, spacer w' 1]
             Run.Fail _ _ -> color red <| flow right [spacer w 1, plainText s, spacer w' 1]
-            Run.Report _ _ -> let c = if Run.failedTests result > 0 then red else green
+            Run.Report _ _ -> let c = if Run.pendingTests result > 0 then yellow else if Run.failedTests result > 0 then red else green
                               in  color c <| flow right [spacer w 1, leftAligned << Text.bold << Text.fromString <| s, spacer w' 1]
+            Run.Pending _ _ -> color yellow <| flow right [spacer w 1, plainText s, spacer w' 1]
 indent : String -> Int
 indent s = let trimmed = String.trimLeft s
            in  String.length s - String.length trimmed
@@ -41,8 +42,11 @@ maxOrZero l =
 
 {-| Runs a list of tests and renders the results as an Element -}
 runDisplay : Test -> Element
-runDisplay tests =
-    let ((summary, allPassed) :: results) = String.run tests
+runDisplay tests = display <| StringRunner.run tests
+
+display : List (String, Run.Result) -> Element
+display rs =
+    let ((summary, allPassed) :: results) = rs
         results' = List.map pretty results
         maxWidth = maxOrZero << List.map widthOf <| results'
         maxHeight = maxOrZero << List.map heightOf <| results'
@@ -50,3 +54,8 @@ runDisplay tests =
                    then []
                    else List.map (color black << container (maxWidth + 2) (maxHeight + 2) midLeft << width maxWidth) results'
     in  flow down <| plainText summary :: spacer 1 10 :: elements
+
+{-| Runs a list of tests and renders the results as an Element -}
+mapDisplay : Test -> Signal Element
+mapDisplay tests =
+    Signal.map (\r -> display r) (StringRunner.map tests)

@@ -1,4 +1,4 @@
-module ElmTest.Runner.Console (runDisplay) where
+module ElmTest.Runner.Console (runDisplay, mapDisplay) where
 
 {-| Run a test suite as a command-line script.
 
@@ -14,7 +14,7 @@ import IO.IO exposing (..)
 
 import ElmTest.Test exposing (..)
 import ElmTest.Run as Run
-import ElmTest.Runner.String as String
+import ElmTest.Runner.String as StringRunner
 
 {-| Run a list of tests in the IO type from [Max New's Elm IO library](https://github.com/maxsnew/IO/).
 Requires this library to work. Results are printed to console once all tests have completed. Exits with
@@ -22,9 +22,17 @@ exit code 0 if all tests pass, or with code 1 if any tests fail.
 -}
 runDisplay : Test -> IO ()
 runDisplay tests =
-    let ((summary, allPassed) :: results) = String.run tests
-        out = summary ++ "\n\n" ++ (String.concat << List.intersperse "\n" << List.map fst <| results)
-    in putStrLn out >>>
-       case Run.pass allPassed of
-            True  -> exit 0
-            False -> exit 1
+    let ((summary, allPassed) :: results) = StringRunner.run tests
+    in display summary results >>> case Run.pass allPassed of
+                                      True  -> exit 0
+                                      False -> exit 1
+
+display : String -> List (String, Run.Result) -> IO ()
+display s r =
+    let out = s ++ "\n\n" ++ (String.concat << List.intersperse "\n" << List.map fst <| r)
+    in  putStrLn out
+
+mapDisplay : Test -> Signal (IO ())
+mapDisplay tests =
+  Signal.map (\r -> let ((summary, allPassed) :: results) = r
+                    in  display summary results) <| StringRunner.map tests
